@@ -93,13 +93,22 @@ node {
 	//sh """docker run -t owasp/zap2docker-stable zap-baseline.py -t http://$SERVICE_IP:80/app"""
 	
 	def targetURL = sh(returnStdout: true, script: "kubectl get svc --namespace default micro -o jsonpath='{.status.loadBalancer.ingress[0].ip}'")
+	def archeryHost = "http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000"
+	
+	def projectId = sh (returnStdout: true, script: "archerysec-cli -s ${archeryHost} -u admin -p admin 
+						--createproject --project_name=DevSecOps --project_disc=PROJECT_DISC 
+						--project_owner=fusion | tail -n1 | jq '.project_id' | sed -e 's/^"//' -e 's/"$//'")
+						
+	def scanId = sh (returnStdout: true, script: "archerysec-cli -s ${archeryHost} -u admin -p admin 
+						--zapscan --target_url=''${targetURL}'' 
+						--project_id=''${projectId}'' | tail -n1 | jq '.scanid' | sed -e 's/^"//' -e 's/"$//'")
+						
+	
 	
 	sh """
 		echo ${targetURL}
 		export ARCHERY_HOST=http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000
 		export TARGET_URL="${targetURL}/app"
-		
-		echo $ARCHERY_HOST $TARGET_URL
 		bash /var/lib/jenkins/archery/zapscan.sh
 	"""
 	}
