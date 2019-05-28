@@ -80,7 +80,7 @@ node {
 
 		sh """ helm delete --purge ${props['deploy.microservice']} | true"""
 		helmdeploy "${props['deploy.microservice']}"
-		sh """sleep 90"""
+		sh """sleep 80"""
 	}
 	
     } 
@@ -99,6 +99,7 @@ node {
 export ARCHERY_HOST=http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000
 export TARGET_URL=${targetURL}/app"""
 	sh """
+		sleep 5
 		chmod +x vars.sh
 		./vars.sh
 		bash /var/lib/jenkins/archery/zapscan.sh
