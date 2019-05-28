@@ -19,7 +19,7 @@ node {
 	props = readProperties  file: """deploy.properties"""   
     }
     
-    /*stage ('Check-secrets')
+    stage ('Check-secrets')
     {
 	sh "rm trufflehog || true"
 	sh "docker run gesellix/trufflehog --json ${props['deploy.gitURL']} > trufflehog"
@@ -32,8 +32,7 @@ node {
          sh 'wget "https://raw.githubusercontent.com/Devops-Accelerators/Micro/master/owasp-dependency-check.sh" '
          sh 'chmod +x owasp-dependency-check.sh'
          sh 'bash owasp-dependency-check.sh'
-         sh 'cat /var/lib/jenkins/OWASP-Dependency-Check/reports/dependency-check-report.xml'
-    }*/
+    }
     
     stage ('create war')
     {
@@ -80,7 +79,7 @@ node {
 
 		sh """ helm delete --purge ${props['deploy.microservice']} | true"""
 		helmdeploy "${props['deploy.microservice']}"
-		sh """sleep 80"""
+		sh """sleep 75"""
 	}
 	
     } 
@@ -99,10 +98,10 @@ node {
 export ARCHERY_HOST=http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000
 export TARGET_URL=${targetURL}/app"""
 	sh """
-		sleep 5
+		sleep 10
 		chmod +x vars.sh
 		./vars.sh
-		bash /var/lib/jenkins/archery/zapscan.sh
+		bash /var/lib/jenkins/archery/zapscan.sh || true
 	"""
 	}
     } 
