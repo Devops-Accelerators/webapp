@@ -91,7 +91,7 @@ node {
 	//sh """echo http://$SERVICE_IP:80"""
 	//sh """docker run -t owasp/zap2docker-stable zap-baseline.py -t http://$SERVICE_IP:80/app"""
 	
-	def targetURL = sh(returnStdout: true, script: "kubectl get svc --namespace default micro -o jsonpath='{.status.loadBalancer.ingress[0].ip}'")
+	def targetURL = sh(returnStdout: true, script: "kubectl get svc --namespace default ${props['deploy.microservice']} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'")
 		sh """
 		echo ${targetURL}
 		rm -f vars.sh || true
