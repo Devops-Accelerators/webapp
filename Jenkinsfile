@@ -1,68 +1,108 @@
-pipeline {
-  agent any 
-  tools {
-    maven 'Maven'
-  }
-  stages {
-    stage ('Initialize') {
-      steps {
-        sh '''
-                    echo "PATH = ${PATH}"
-                    echo "M2_HOME = ${M2_HOME}"
-            ''' 
-      }
+@Library('my_shared_library')_
+
+def workspace;
+def branch;
+def dockerImage;
+def props='';
+def microserviceName;
+def port;
+def docImg;
+def repoName;
+def credentials = 'docker-credentials';
+
+node {
+    stage('Checkout Code')
+    {
+	checkout scm
+	workspace = pwd() 
+	     sh "ls -lat"
+	props = readProperties  file: """deploy.properties"""   
     }
     
-    stage ('Check-Git-Secrets') {
-      steps {
-        sh 'rm trufflehog || true'
-        sh 'docker run gesellix/trufflehog --json https://github.com/cehkunal/webapp.git > trufflehog'
-        sh 'cat trufflehog'
-      }
+    /*stage ('Check-secrets')
+    {
+	sh "rm trufflehog || true"
+	sh "docker run gesellix/trufflehog --json ${props['deploy.gitURL']} > trufflehog"
+	sh "cat trufflehog"
     }
     
-    stage ('Source Composition Analysis') {
-      steps {
+    stage ('Source Composition Analysis') 
+    {
          sh 'rm owasp* || true'
-         sh 'wget "https://raw.githubusercontent.com/cehkunal/webapp/master/owasp-dependency-check.sh" '
+         sh 'wget "https://raw.githubusercontent.com/Devops-Accelerators/Micro/master/owasp-dependency-check.sh" '
          sh 'chmod +x owasp-dependency-check.sh'
          sh 'bash owasp-dependency-check.sh'
          sh 'cat /var/lib/jenkins/OWASP-Dependency-Check/reports/dependency-check-report.xml'
-        
-      }
+    }*/
+    
+    stage ('create war')
+    {
+    	mavenbuildexec "mvn build"
     }
     
-    stage ('SAST') {
-      steps {
-        withSonarQubeEnv('sonar') {
-          sh 'mvn sonar:sonar'
-          sh 'cat target/sonar/report-task.txt'
-        }
-      }
+    stage ('Create Docker Image')
+    { 
+	     echo 'creating an image'
+	     docImg="${props['deploy.dockerhub']}/${props['deploy.microservice']}"
+             dockerImage = dockerexec "${docImg}"
     }
     
-    stage ('Build') {
-      steps {
-      sh 'mvn clean package'
-       }
+     stage ('Push Image to Docker Registry')
+    { 
+	     docker.withRegistry('https://registry.hub.docker.com','docker-credentials') {
+             dockerImage.push("${BUILD_NUMBER}")
+	     }
     }
     
-    stage ('Deploy-To-Tomcat') {
-            steps {
-           sshagent(['tomcat']) {
-                sh 'scp -o StrictHostKeyChecking=no target/*.war ubuntu@13.232.202.25:/prod/apache-tomcat-8.5.39/webapps/webapp.war'
-              }      
-           }       
+    stage ('Scan-image')
+    {
+    	
     }
     
-    
-    stage ('DAST') {
-      steps {
-        sshagent(['zap']) {
-         sh 'ssh -o  StrictHostKeyChecking=no ubuntu@13.232.158.44 "docker run -t owasp/zap2docker-stable zap-baseline.py -t http://13.232.202.25:8080/webapp/" || true'
-        }
-      }
+    stage ('Config helm')
+    { 
+    	
+	def filename = 'helmchart/values.yaml'
+	def data = readYaml file: filename
+	
+	data.image.repository = "${docImg}"
+	data.image.tag = "$BUILD_NUMBER"
+	data.service.appPort = "${props['deploy.port']}"
+	
+	sh "rm -f helmchart/values.yaml"
+	writeYaml file: filename, data: data
+	
     }
+    stage ('deploy to cluster')
+    {
+    	//helmdeploy "${props['deploy.microservice']}"
+	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://34.66.167.78') {
+
+		sh """ helm delete --purge ${props['deploy.microservice']} | true"""
+		helmdeploy "${props['deploy.microservice']}"
+		sh """sleep 60"""
+	}
+	
+    } 
     
-  }
+    stage ('DAST')
+    {
+    	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://34.66.167.78') {
+    	//sh """export SERVICE_IP=$(kubectl get svc --namespace default micro -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"""
+	//sh """echo http://$SERVICE_IP:80"""
+	//sh """docker run -t owasp/zap2docker-stable zap-baseline.py -t http://$SERVICE_IP:80/app/employee"""
+	
+	def targetURL = sh(returnStdout: true, script: "kubectl get svc --namespace default micro -o jsonpath='{.status.loadBalancer.ingress[0].ip}'")
+	
+	sh """
+		echo ${targetURL}
+		export ARCHERY_HOST=http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000
+		export TARGET_URL="${targetURL}/app/employee"
+		bash /var/lib/jenkins/archery/zapscan.sh
+	"""
+	}
+    } 
+	
 }
+
+		
