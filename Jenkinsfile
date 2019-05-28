@@ -92,7 +92,13 @@ node {
 	//sh """docker run -t owasp/zap2docker-stable zap-baseline.py -t http://$SERVICE_IP:80/app"""
 	
 	def targetURL = sh(returnStdout: true, script: "kubectl get svc --namespace default ${props['deploy.microservice']} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'")
-		sh """
+		
+	sh """
+		export ARCHERY_HOST=http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000
+		export TARGET_URL=${targetURL}/app
+		bash /var/lib/jenkins/archery/zapscan.sh || true
+	"""
+		/*sh """
 		echo ${targetURL}
 		rm -f vars.sh || true
 		cat >> vars.sh <<EOF 
@@ -103,7 +109,7 @@ export TARGET_URL=${targetURL}/app"""
 		chmod +x vars.sh
 		./vars.sh
 		bash /var/lib/jenkins/archery/zapscan.sh || true
-	"""
+	"""*/
 	}
     } 
 	
