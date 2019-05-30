@@ -9,7 +9,7 @@ def docImg;
 def repoName;
 def credentials = 'docker-credentials';
 def commit_Email;
-def archery;
+def archery='';
 node {
     stage('Checkout Code')
     {
