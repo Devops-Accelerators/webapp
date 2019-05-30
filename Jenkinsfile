@@ -180,7 +180,7 @@ def notifyBuild(String buildStatus, String buildFailedAt, String commit_Email, S
 	buildStatus = buildStatus ?: 'SUCCESS'
 	def details = """Please find attahcment for log and Check console output at ${BUILD_URL}\n \n "${bodyDetails}" and to find archerysec report check "${ARCHERY_HOST}"
 		\n"""
-	emailext attachLog: true,attachmentsPattern: 'owasp-dependency-check.sh',attachmentsPattern: 'trufflehog'
+	emailext attachLog: true,attachmentsPattern: 'trufflehog',
 	notifyEveryUnstableBuild: true,
 	recipientProviders: [[$class: 'RequesterRecipientProvider']],
 	body: details, 
