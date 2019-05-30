@@ -156,7 +156,7 @@ node {
     	try{
 	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://34.66.167.78') {
 	def targetURL = sh(returnStdout: true, script: "kubectl get svc --namespace default ${props['deploy.microservice']} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'")
-	def archery="http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000"	
+	archery="http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000"	
 	sh """
 		echo ${targetURL}
 		export ARCHERY_HOST=http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000
@@ -178,7 +178,7 @@ node {
 def notifyBuild(String buildStatus, String buildFailedAt, String commit_Email, String bodyDetails) 
 {
 	buildStatus = buildStatus ?: 'SUCCESS'
-	def details = """Please find attahcment for log and Check console output at ${BUILD_URL}\n \n "${bodyDetails}" and to find archerysec report check "${ARCHERY}"
+	def details = """Please find attahcment for log and Check console output at ${BUILD_URL}\n \n "${bodyDetails}" and to find archerysec report check "${archery}"
 		\n"""
 	emailext attachLog: true,attachmentsPattern: 'trufflehog',
 	notifyEveryUnstableBuild: true,
