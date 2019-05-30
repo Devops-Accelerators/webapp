@@ -1,16 +1,15 @@
 @Library('my_shared_library')_
 
 def workspace;
-def branch;
 def dockerImage;
 def props='';
+def targetURL='';
 def microserviceName;
-def port;
 def docImg;
 def repoName;
 def credentials = 'docker-credentials';
 def commit_Email;
-def archery;
+
 node {
     stage('Checkout Code')
     {
@@ -61,6 +60,19 @@ node {
 			}
     }
     
+    stage ('SAST')
+    {
+   	 steps
+    	{
+		sonarexec "${props['deploy.sonarqubeserver']}"
+    
+         	testexec "junit testing.."
+    	
+	        codecoveragexec "${props['deploy.sonarqubeserver']}"
+    	}
+    
+    }
+    
     stage ('create war')
     {
     	try{
@@ -104,11 +116,6 @@ node {
 			}
     }
     
-    stage ('Scan-image')
-    {
-    	
-    }
-    
     stage ('Config helm')
     { 
     	
@@ -135,11 +142,13 @@ node {
     {
     	try{
 	//helmdeploy "${props['deploy.microservice']}"
-	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://34.66.167.78') {
+	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://35.202.84.245') {
 
 		sh """ helm delete --purge ${props['deploy.microservice']} | true"""
 		helmdeploy "${props['deploy.microservice']}"
 		sh """sleep 75"""
+		targetURL = sh(returnStdout: true, script: "kubectl get svc --namespace default ${props['deploy.microservice']} -o 
+								jsonpath='{.status.loadBalancer.ingress[0].ip}'")
 	}
 	}
 	     catch (error) {
@@ -154,15 +163,15 @@ node {
     stage ('DAST')
     {
     	try{
-	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://34.66.167.78') {
-	def targetURL = sh(returnStdout: true, script: "kubectl get svc --namespace default ${props['deploy.microservice']} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'")	
+	
+		
 	sh """
 		echo ${targetURL}
 		export ARCHERY_HOST=http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000
 		export TARGET_URL='http://${targetURL}/app'
 		bash /var/lib/jenkins/archery/zapscan.sh || true
 	"""
-	}
+	
 	}
 	     catch (error) {
 				currentBuild.result='FAILURE'
@@ -177,12 +186,14 @@ node {
 def notifyBuild(String buildStatus, String buildFailedAt, String commit_Email, String bodyDetails) 
 {
 	buildStatus = buildStatus ?: 'SUCCESS'
-	def details = """Please find attahcment for log and Check console output at ${BUILD_URL}\n \n "${bodyDetails}"
+	def details = """Please find attahcment for log and Check console output at ${BUILD_URL}\n \n "${bodyDetails}" and to find archerysec report check "${ARCHERY_HOST}"
 		\n"""
-	emailext attachLog: true,attachmentsPattern: 'trufflehog',
+	emailext attachLog: true,attachmentsPattern: 'owasp-dependency-check.sh',attachmentsPattern: 'trufflehog'
 	notifyEveryUnstableBuild: true,
 	recipientProviders: [[$class: 'RequesterRecipientProvider']],
 	body: details, 
 	subject: """${buildStatus}: [${BUILD_NUMBER}] ${buildFailedAt}""", 
 	to: """${commit_Email}"""
 }
+
+		
