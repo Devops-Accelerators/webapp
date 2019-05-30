@@ -62,14 +62,19 @@ node {
     
     stage ('SAST')
     {
-   	 steps
-    	{
+	    try{
 		sonarexec "${props['deploy.sonarqubeserver']}"
     
          	testexec "junit testing.."
     	
 	        codecoveragexec "${props['deploy.sonarqubeserver']}"
-    	}
+		 }
+	 catch (error) {
+				currentBuild.result='FAILURE'
+				notifyBuild(currentBuild.result, "At Stage SAST", commit_Email, "")
+				echo """${error.getMessage()}"""
+				throw error
+			}
     
     }
     
