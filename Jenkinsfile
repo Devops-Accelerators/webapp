@@ -9,48 +9,99 @@ def port;
 def docImg;
 def repoName;
 def credentials = 'docker-credentials';
+def commit_Email;
 
 node {
     stage('Checkout Code')
     {
+	try{
 	checkout scm
 	workspace = pwd() 
 	     sh "ls -lat"
-	props = readProperties  file: """deploy.properties"""   
+	commit_Email=sh(returnStdout: true, script: '''Email=$(git log -1 --pretty=%ae) 
+                                                            echo $Email''').trim();
+	props = readProperties  file: """deploy.properties""" 
+	}
+	catch (error) {
+				currentBuild.result='FAILURE'
+				notifyBuild(currentBuild.result, "At Stage Checkout Code", commit_Email, "")
+				echo """${error.getMessage()}"""
+				throw error
+			}
     }
     
     stage ('Check-secrets')
     {
+	try{
 	sh "rm trufflehog || true"
 	sh "docker run gesellix/trufflehog --json ${props['deploy.gitURL']} > trufflehog"
 	sh "cat trufflehog"
+	}
+	catch (error) {
+				currentBuild.result='FAILURE'
+				notifyBuild(currentBuild.result, "At Stage Check-secrets", commit_Email, "")
+				echo """${error.getMessage()}"""
+				throw error
+			}
     }
     
     stage ('Source Composition Analysis') 
     {
-         sh 'rm owasp* || true'
+         try{
+	 sh 'rm owasp* || true'
          sh 'wget "https://raw.githubusercontent.com/Devops-Accelerators/Micro/master/owasp-dependency-check.sh" '
          sh 'chmod +x owasp-dependency-check.sh'
          sh 'bash owasp-dependency-check.sh'
+	 }
+	 catch (error) {
+				currentBuild.result='FAILURE'
+				notifyBuild(currentBuild.result, "At Stage Source Composition Analysis", commit_Email, "")
+				echo """${error.getMessage()}"""
+				throw error
+			}
     }
     
     stage ('create war')
     {
-    	mavenbuildexec "mvn build"
+    	try{
+	mavenbuildexec "mvn build"
+	}
+	 catch (error) {
+				currentBuild.result='FAILURE'
+				notifyBuild(currentBuild.result, "At Stage create war", commit_Email, "")
+				echo """${error.getMessage()}"""
+				throw error
+			}
     }
     
     stage ('Create Docker Image')
     { 
+	     try{
 	     echo 'creating an image'
 	     docImg="${props['deploy.dockerhub']}/${props['deploy.microservice']}"
              dockerImage = dockerexec "${docImg}"
+	     }
+	     catch (error) {
+				currentBuild.result='FAILURE'
+				notifyBuild(currentBuild.result, "At Stage create war", commit_Email, "")
+				echo """${error.getMessage()}"""
+				throw error
+			}
     }
     
      stage ('Push Image to Docker Registry')
     { 
+	     try{
 	     docker.withRegistry('https://registry.hub.docker.com','docker-credentials') {
              dockerImage.push("${BUILD_NUMBER}")
 	     }
+	     }
+	     catch (error) {
+				currentBuild.result='FAILURE'
+				notifyBuild(currentBuild.result, "At Stage Push Image to Docker Registry", commit_Email, "")
+				echo """${error.getMessage()}"""
+				throw error
+			}
     }
     
     stage ('Scan-image')
@@ -61,6 +112,7 @@ node {
     stage ('Config helm')
     { 
     	
+	try{
 	def filename = 'helmchart/values.yaml'
 	def data = readYaml file: filename
 	
@@ -70,27 +122,39 @@ node {
 	
 	sh "rm -f helmchart/values.yaml"
 	writeYaml file: filename, data: data
+	}
+	     catch (error) {
+				currentBuild.result='FAILURE'
+				notifyBuild(currentBuild.result, "At Stage Config helm", commit_Email, "")
+				echo """${error.getMessage()}"""
+				throw error
+			}
 	
     }
     stage ('deploy to cluster')
     {
-    	//helmdeploy "${props['deploy.microservice']}"
+    	try{
+	//helmdeploy "${props['deploy.microservice']}"
 	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://34.66.167.78') {
 
 		sh """ helm delete --purge ${props['deploy.microservice']} | true"""
 		helmdeploy "${props['deploy.microservice']}"
 		sh """sleep 75"""
 	}
+	}
+	     catch (error) {
+				currentBuild.result='FAILURE'
+				notifyBuild(currentBuild.result, "At Stage deploy to cluster", commit_Email, "")
+				echo """${error.getMessage()}"""
+				throw error
+			}
 	
     } 
     
     stage ('DAST')
     {
-    	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://34.66.167.78') {
-    	//sh """export SERVICE_IP=$(kubectl get svc --namespace default micro -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"""
-	//sh """echo http://$SERVICE_IP:80"""
-	//sh """docker run -t owasp/zap2docker-stable zap-baseline.py -t http://$SERVICE_IP:80/app"""
-	
+    	try{
+	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://34.66.167.78') {
 	def targetURL = sh(returnStdout: true, script: "kubectl get svc --namespace default ${props['deploy.microservice']} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'")
 		
 	sh """
@@ -99,21 +163,27 @@ node {
 		export TARGET_URL='http://${targetURL}/app'
 		bash /var/lib/jenkins/archery/zapscan.sh || true
 	"""
-		/*sh """
-		echo ${targetURL}
-		rm -f vars.sh || true
-		cat >> vars.sh <<EOF 
-export ARCHERY_HOST=http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000
-export TARGET_URL=${targetURL}/app"""
-	sh """
-		sleep 10
-		chmod +x vars.sh
-		./vars.sh
-		bash /var/lib/jenkins/archery/zapscan.sh || true
-	"""*/
 	}
+	}
+	     catch (error) {
+				currentBuild.result='FAILURE'
+				notifyBuild(currentBuild.result, "At Stage DAST", commit_Email, "")
+				echo """${error.getMessage()}"""
+				throw error
+			}
     } 
+    notifyBuild(currentBuild.result, "", commit_Email, """Build successful. """)
 	
 }
-
-		
+def notifyBuild(String buildStatus, String buildFailedAt, String commit_Email, String bodyDetails) 
+{
+	buildStatus = buildStatus ?: 'SUCCESS'
+	def details = """Please find attahcment for log and Check console output at ${BUILD_URL}\n \n "${bodyDetails}" and to find archerysec report check "${ARCHERY_HOST}"
+		\n"""
+	emailext attachLog: true,attachmentsPattern: 'owasp-dependency-check.sh',attachmentsPattern: 'trufflehog'
+	notifyEveryUnstableBuild: true,
+	recipientProviders: [[$class: 'RequesterRecipientProvider']],
+	body: details, 
+	subject: """${buildStatus}: [${BUILD_NUMBER}] ${buildFailedAt}""", 
+	to: """${commit_Email}"""
+}
