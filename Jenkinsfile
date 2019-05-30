@@ -163,7 +163,7 @@ node {
     stage ('DAST')
     {
     	try{
-	
+	archery=http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000
 		
 	sh """
 		echo ${targetURL}
