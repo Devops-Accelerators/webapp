@@ -151,7 +151,7 @@ node {
 
 		sh """ helm delete --purge ${props['deploy.microservice']} | true"""
 		helmdeploy "${props['deploy.microservice']}"
-		sh """sleep 75"""
+		sh """sleep 80"""
 		targetURL = sh(returnStdout: true, script: "kubectl get svc --namespace default ${props['deploy.microservice']} \
 								-o jsonpath='{.status.loadBalancer.ingress[0].ip}'")
 	}
