@@ -9,7 +9,7 @@ def docImg;
 def repoName;
 def credentials = 'docker-credentials';
 def commit_Email;
-def archery='';
+
 node {
     stage('Checkout Code')
     {
@@ -62,19 +62,14 @@ node {
     
     stage ('SAST')
     {
-	    try{
+   	 steps
+    	{
 		sonarexec "${props['deploy.sonarqubeserver']}"
     
          	testexec "junit testing.."
     	
 	        codecoveragexec "${props['deploy.sonarqubeserver']}"
-		 }
-	 catch (error) {
-				currentBuild.result='FAILURE'
-				notifyBuild(currentBuild.result, "At Stage SAST", commit_Email, "")
-				echo """${error.getMessage()}"""
-				throw error
-			}
+    	}
     
     }
     
@@ -168,7 +163,7 @@ node {
     stage ('DAST')
     {
     	try{
-	archery="http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000"
+	
 		
 	sh """
 		echo ${targetURL}
@@ -191,9 +186,9 @@ node {
 def notifyBuild(String buildStatus, String buildFailedAt, String commit_Email, String bodyDetails) 
 {
 	buildStatus = buildStatus ?: 'SUCCESS'
-	def details = """Please find attahcment for archerysec report '${archery}' \n and log and Check console output at ${BUILD_URL}\n \n \"${bodyDetails}\"
+	def details = """Please find attahcment for log and Check console output at ${BUILD_URL}\n \n "${bodyDetails}" and to find archerysec report check "${ARCHERY_HOST}"
 		\n"""
-	emailext attachLog: true,attachmentsPattern: 'owasp-dependency-check.sh', 'trufflehog',
+	emailext attachLog: true,attachmentsPattern: 'owasp-dependency-check.sh',attachmentsPattern: 'trufflehog'
 	notifyEveryUnstableBuild: true,
 	recipientProviders: [[$class: 'RequesterRecipientProvider']],
 	body: details, 
