@@ -20,7 +20,6 @@ node {
 	commit_Email=sh(returnStdout: true, script: '''Email=$(git log -1 --pretty=%ae) 
                                                             echo $Email''').trim();
 	props = readProperties  file: """deploy.properties""" 
-	archery="http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000"
 	}
 	catch (error) {
 				currentBuild.result='FAILURE'
@@ -169,6 +168,7 @@ node {
     stage ('DAST')
     {
     	try{
+	archery="http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000"
 		
 	sh """
 		echo ${targetURL}
@@ -191,7 +191,7 @@ node {
 def notifyBuild(String buildStatus, String buildFailedAt, String commit_Email, String bodyDetails) 
 {
 	buildStatus = buildStatus ?: 'SUCCESS'
-	def details = """Please find attahcment for archerysec report ${archery} \n and log and Check console output at ${BUILD_URL}\n \n \"${bodyDetails}\"
+	def details = """Please find attahcment for archerysec report '${archery}' \n and log and Check console output at ${BUILD_URL}\n \n \"${bodyDetails}\"
 		\n"""
 	emailext attachLog: true,attachmentsPattern: 'owasp-dependency-check.sh', 'trufflehog',
 	notifyEveryUnstableBuild: true,
