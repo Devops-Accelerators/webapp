@@ -28,7 +28,7 @@ node {
 				throw error
 			}
     }
-    /*
+    
     stage ('Check-secrets')
     {
 	try{
@@ -183,7 +183,7 @@ node {
 				echo """${error.getMessage()}"""
 				throw error
 			}
-    } */
+    } 
     notifyBuild(currentBuild.result, "", commit_Email, "Build successful.",props['deploy.archery'])
 	
 }
