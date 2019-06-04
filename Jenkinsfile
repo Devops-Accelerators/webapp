@@ -184,7 +184,7 @@ node {
 				throw error
 			}
     } */
-    notifyBuild(currentBuild.result, "", commit_Email, """Build successful. """)
+    notifyBuild(currentBuild.result, "", commit_Email, """Build successful. """,${props['deploy.archery']})
 	
 }
 def notifyBuild(String buildStatus, String buildFailedAt, String commit_Email, String bodyDetails,String archery) 
