@@ -190,7 +190,7 @@ node {
 def notifyBuild(String buildStatus, String buildFailedAt, String commit_Email, String bodyDetails,String archery) 
 {
 	buildStatus = buildStatus ?: 'SUCCESS'
-	def details = """Please find attahcment for archerysec report ${archery} \n and log and Check console output at ${BUILD_URL}\n \n \"${bodyDetails}\"
+	def details = """Please find attahcment for archerysec report \"${archery}\" \n and log and Check console output at ${BUILD_URL}\n \n \"${bodyDetails}\"
 		\n"""
 	emailext attachLog: true,attachmentsPattern: 'owasp-dependency-check.sh', 'trufflehog',
 	notifyEveryUnstableBuild: true,
