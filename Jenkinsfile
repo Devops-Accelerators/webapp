@@ -23,7 +23,7 @@ node {
 	}
 	catch (error) {
 				currentBuild.result='FAILURE'
-				notifyBuild(currentBuild.result, "At Stage Checkout Code", commit_Email, "",${props['deploy.archery']})
+				notifyBuild(currentBuild.result, "At Stage Checkout Code", commit_Email, "",props['deploy.archery'])
 				echo """${error.getMessage()}"""
 				throw error
 			}
@@ -184,7 +184,7 @@ node {
 				throw error
 			}
     } */
-    notifyBuild(currentBuild.result, "", commit_Email, """Build successful. """,${props['deploy.archery']})
+    notifyBuild(currentBuild.result, "", commit_Email, """Build successful. """,props['deploy.archery'])
 	
 }
 def notifyBuild(String buildStatus, String buildFailedAt, String commit_Email, String bodyDetails,String archery) 
