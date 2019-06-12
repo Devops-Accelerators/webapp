@@ -33,7 +33,7 @@ node {
     {
 	try{
 	sh "rm trufflehog || true"
-	sh "docker run gesellix/trufflehog --json ${props['deploy.gitURL']} > trufflehog"
+	sh "docker run gesellix/trufflehog --rules /var/lib/jenkins/truffle-rules/rules --json ${props['deploy.gitURL']} > trufflehog"
 	sh "cat trufflehog"
 	}
 	catch (error) {
@@ -147,7 +147,7 @@ node {
     {
     	try{
 	//helmdeploy "${props['deploy.microservice']}"
-	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://35.222.150.230') {
+	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://35.192.113.67') {
 
 		sh """ helm delete --purge ${props['deploy.microservice']} | true"""
 		helmdeploy "${props['deploy.microservice']}"
