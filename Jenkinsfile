@@ -47,10 +47,9 @@ node {
     stage ('Source Composition Analysis') 
     {
          try{
-	 sh 'rm owasp* || true'
-         sh 'wget "https://raw.githubusercontent.com/Devops-Accelerators/Micro/master/owasp-dependency-check.sh" '
-         sh 'chmod +x owasp-dependency-check.sh'
-         sh 'bash owasp-dependency-check.sh'
+	 
+	snykSecurity projectName: "${props['deploy.microservice']}", severity: 'high', snykInstallation: 'SnykSec', snykTokenId: 'snyk-personal', targetFile: './pom.xml'
+	 
 	 }
 	 catch (error) {
 				currentBuild.result='FAILURE'
@@ -60,14 +59,10 @@ node {
 			}
     }
     
-    stage ('SAST')
+    /*stage ('SAST')
     {
 	    try{
 		sonarexec "${props['deploy.sonarqubeserver']}"
-    
-         	testexec "junit testing.."
-    	
-	        codecoveragexec "${props['deploy.sonarqubeserver']}"
 		 }
 	 catch (error) {
 				currentBuild.result='FAILURE'
@@ -75,8 +70,7 @@ node {
 				echo """${error.getMessage()}"""
 				throw error
 			}
-    
-    }
+    } */
     
     stage ('create war')
     {
@@ -147,7 +141,7 @@ node {
     {
     	try{
 	//helmdeploy "${props['deploy.microservice']}"
-	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://35.192.113.67') {
+	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://35.192.88.76') {
 
 		sh """ helm delete --purge ${props['deploy.microservice']} | true"""
 		helmdeploy "${props['deploy.microservice']}"
