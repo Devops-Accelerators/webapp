@@ -59,7 +59,7 @@ node {
 			}
     }
     
-    /*stage ('SAST')
+    stage ('SAST')
     {
 	    try{
 		sonarexec "${props['deploy.sonarqubeserver']}"
@@ -70,7 +70,7 @@ node {
 				echo """${error.getMessage()}"""
 				throw error
 			}
-    } */
+    }
     
     stage ('create war')
     {
@@ -141,7 +141,7 @@ node {
     {
     	try{
 	//helmdeploy "${props['deploy.microservice']}"
-	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://35.192.88.76') {
+	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://23.236.52.69') {
 
 		sh """ helm delete --purge ${props['deploy.microservice']} | true"""
 		helmdeploy "${props['deploy.microservice']}"
