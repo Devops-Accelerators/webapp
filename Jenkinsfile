@@ -33,7 +33,7 @@ node {
     {
 	try{
 	sh "rm trufflehog || true"
-	sh "docker run gesellix/trufflehog --json ${props['deploy.gitURL']} > trufflehog"
+	sh "docker run gesellix/trufflehog --json --regex ${props['deploy.gitURL']} > trufflehog"
 	sh "cat trufflehog"
 	}
 	catch (error) {
@@ -72,7 +72,7 @@ node {
 			}
     }
     
-    stage ('create war')
+  /*  stage ('create war')
     {
     	try{
 	mavenbuildexec "mvn build"
@@ -177,7 +177,7 @@ node {
 				echo """${error.getMessage()}"""
 				throw error
 			}
-    } 
+    } */
     notifyBuild(currentBuild.result, "", commit_Email, "Build successful.",props['deploy.archery'])
 	
 }
