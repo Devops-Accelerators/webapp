@@ -35,6 +35,12 @@ node {
 	sh "rm trufflehog || true"
 	sh "docker run gesellix/trufflehog --json --regex ${props['deploy.gitURL']} > trufflehog"
 	sh "cat trufflehog"
+	
+	/*File file = new File("./trufflehog");
+	if (file.length() == 0)
+	{
+		sh "echo Trufflehog didn't find any secrets. We are good to go !"
+	}*/
 	}
 	catch (error) {
 				currentBuild.result='FAILURE'
@@ -48,7 +54,7 @@ node {
     {
          try{
 	 
-	snykSecurity projectName: "${props['deploy.microservice']}", severity: 'high', snykInstallation: 'SnykSec', snykTokenId: 'snyk-personal', targetFile: './pom.xml'
+	snykSecurity projectName: "${props['deploy.microservice']}", severity: 'high', snykInstallation: 'SnykSec', snykTokenId: 'snyk-personal', targetFile: '.'
 	 
 	 }
 	 catch (error) {
@@ -70,9 +76,9 @@ node {
 				echo """${error.getMessage()}"""
 				throw error
 			}
-    }
+    } 
     
-  /*  stage ('create war')
+    stage ('create war')
     {
     	try{
 	mavenbuildexec "mvn build"
@@ -100,7 +106,7 @@ node {
 			}
     }
     
-     stage ('Push Image to Docker Registry')
+    stage ('Push Image to Docker Registry')
     { 
 	     try{
 	     docker.withRegistry('https://registry.hub.docker.com','docker-credentials') {
@@ -113,6 +119,21 @@ node {
 				echo """${error.getMessage()}"""
 				throw error
 			}
+    }
+    
+    stage ('Scan Container Images')
+    {
+	try{
+	sh 'rm anchore_images || true'
+    	sh """echo "${docImg}:${BUILD_NUMBER} `pwd`/Dockerfile" > anchore_images"""
+	anchore 'anchore_images'
+	}
+	catch (error) {
+				currentBuild.result='FAILURE'
+				notifyBuild(currentBuild.result, "At Stage Push Image to Docker Registry", commit_Email, "",props['deploy.archery'])
+				echo """${error.getMessage()}"""
+				throw error
+		}
     }
     
     stage ('Config helm')
@@ -141,7 +162,7 @@ node {
     {
     	try{
 	//helmdeploy "${props['deploy.microservice']}"
-	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://23.236.52.69') {
+	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://35.225.92.51') {
 
 		sh """ helm delete --purge ${props['deploy.microservice']} | true"""
 		helmdeploy "${props['deploy.microservice']}"
@@ -165,7 +186,7 @@ node {
 		
 	sh """
 		echo ${targetURL}
-		export ARCHERY_HOST=http://ec2-63-33-228-104.eu-west-1.compute.amazonaws.com:8000
+		export ARCHERY_HOST=props['deploy.archery']
 		export TARGET_URL='http://${targetURL}/app'
 		bash /var/lib/jenkins/archery/zapscan.sh || true
 	"""
@@ -177,7 +198,7 @@ node {
 				echo """${error.getMessage()}"""
 				throw error
 			}
-    } */
+    } 
     notifyBuild(currentBuild.result, "", commit_Email, "Build successful.",props['deploy.archery'])
 	
 }
@@ -192,4 +213,7 @@ def notifyBuild(String buildStatus, String buildFailedAt, String commit_Email, S
 	body: details, 
 	subject: """${buildStatus}: [${BUILD_NUMBER}] ${buildFailedAt}""", 
 	to: """${commit_Email}"""
+	
+	slackSend message: """Build Result: ${buildStatus} \n ${BUILD_URL} """
+
 }
