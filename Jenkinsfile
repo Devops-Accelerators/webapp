@@ -20,7 +20,7 @@ node {
 	props = readProperties  file: """deploy.properties"""   
     }
     
-   /* stage ('Static Code Analysis')
+    stage ('Static Code Analysis')
     { 
 	    sonarexec "${props['deploy.sonarqubeserver']}"
     }
@@ -33,7 +33,7 @@ node {
      stage ('Code Coverage')
     { 
         codecoveragexec "${props['deploy.sonarqubeserver']}"
-    }*/
+    }
     stage ('create war')
     {
     	mavenbuildexec "mvn build"
@@ -69,12 +69,12 @@ node {
     }
     stage ('deploy to cluster')
     {
-    	//helmdeploy "${props['deploy.microservice']}"
+    	/*//helmdeploy "${props['deploy.microservice']}"
 	withKubeConfig(credentialsId: 'kubernetes-creds', serverUrl: 'https://104.198.157.239') {
 
 		sh """ helm delete --purge ${props['deploy.microservice']} | true"""
 		helmdeploy "${props['deploy.microservice']}"
-	}
+	}*/
 	
     }
 	
